@@ -23,12 +23,21 @@ export interface BlobCommandOptions {
   abortSignal?: AbortSignal;
 }
 
+/**
+ * The access level of a blob.
+ * - 'public': The blob is publicly accessible via its URL.
+ * - 'private': The blob requires authentication to access.
+ */
+export type BlobAccessType = 'public' | 'private';
+
 // shared interface for put, copy and multipart upload
 export interface CommonCreateBlobOptions extends BlobCommandOptions {
   /**
-   * Whether the blob should be publicly accessible. The only currently allowed value is `public`.
+   * Whether the blob should be publicly accessible.
+   * - 'public': The blob will be publicly accessible via its URL.
+   * - 'private': The blob will require authentication to access.
    */
-  access: 'public';
+  access: BlobAccessType;
   /**
    * Adds a random suffix to the filename.
    * @defaultvalue false
@@ -49,6 +58,12 @@ export interface CommonCreateBlobOptions extends BlobCommandOptions {
    * @defaultvalue 30 * 24 * 60 * 60 (1 Month)
    */
   cacheControlMaxAge?: number;
+  /**
+   * Only perform the operation if the blob's current ETag matches this value.
+   * Use this for optimistic concurrency control to prevent overwriting changes made by others.
+   * If the ETag doesn't match, a `BlobPreconditionFailedError` will be thrown.
+   */
+  ifMatch?: string;
 }
 
 /**

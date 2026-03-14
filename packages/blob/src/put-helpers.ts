@@ -13,6 +13,8 @@ export const putOptionHeaderMap = {
   addRandomSuffix: 'x-add-random-suffix',
   allowOverwrite: 'x-allow-overwrite',
   contentType: 'x-content-type',
+  access: 'x-vercel-blob-access',
+  ifMatch: 'x-if-match',
 };
 
 /**
@@ -39,6 +41,10 @@ export interface PutBlobResult {
    * The content disposition header value.
    */
   contentDisposition: string;
+  /**
+   * The ETag of the blob. Can be used with `ifMatch` for conditional writes.
+   */
+  etag: string;
 }
 
 export type PutBlobApiResponse = PutBlobResult;
@@ -71,6 +77,9 @@ export function createPutHeaders<TOptions extends CommonPutCommandOptions>(
 ): Record<string, string> {
   const headers: Record<string, string> = {};
 
+  // access is always required, so always add it to headers
+  headers[putOptionHeaderMap.access] = options.access;
+
   if (allowedOptions.includes('contentType') && options.contentType) {
     headers[putOptionHeaderMap.contentType] = options.contentType;
   }
@@ -99,6 +108,10 @@ export function createPutHeaders<TOptions extends CommonPutCommandOptions>(
   ) {
     headers[putOptionHeaderMap.cacheControlMaxAge] =
       options.cacheControlMaxAge.toString();
+  }
+
+  if (allowedOptions.includes('ifMatch') && options.ifMatch) {
+    headers[putOptionHeaderMap.ifMatch] = options.ifMatch;
   }
 
   return headers;
@@ -139,8 +152,10 @@ export async function createPutOptions<
     throw new BlobError('missing options, see usage');
   }
 
-  if (options.access !== 'public') {
-    throw new BlobError('access must be "public"');
+  if (options.access !== 'public' && options.access !== 'private') {
+    throw new BlobError(
+      'access must be "private" or "public", see https://vercel.com/docs/vercel-blob',
+    );
   }
 
   if (extraChecks) {

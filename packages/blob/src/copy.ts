@@ -10,6 +10,10 @@ export interface CopyBlobResult {
   pathname: string;
   contentType: string;
   contentDisposition: string;
+  /**
+   * The ETag of the blob. Can be used with `ifMatch` for conditional writes.
+   */
+  etag: string;
 }
 
 /**
@@ -29,8 +33,10 @@ export async function copy(
     throw new BlobError('missing options, see usage');
   }
 
-  if (options.access !== 'public') {
-    throw new BlobError('access must be "public"');
+  if (options.access !== 'public' && options.access !== 'private') {
+    throw new BlobError(
+      'access must be "private" or "public", see https://vercel.com/docs/vercel-blob',
+    );
   }
 
   if (toPathname.length > MAXIMUM_PATHNAME_LENGTH) {
@@ -49,6 +55,9 @@ export async function copy(
 
   const headers: Record<string, string> = {};
 
+  // access is always required, so always add it to headers
+  headers['x-vercel-blob-access'] = options.access;
+
   if (options.addRandomSuffix !== undefined) {
     headers['x-add-random-suffix'] = options.addRandomSuffix ? '1' : '0';
   }
@@ -63,6 +72,10 @@ export async function copy(
 
   if (options.cacheControlMaxAge !== undefined) {
     headers['x-cache-control-max-age'] = options.cacheControlMaxAge.toString();
+  }
+
+  if (options.ifMatch) {
+    headers['x-if-match'] = options.ifMatch;
   }
 
   const params = new URLSearchParams({
@@ -86,5 +99,6 @@ export async function copy(
     pathname: response.pathname,
     contentType: response.contentType,
     contentDisposition: response.contentDisposition,
+    etag: response.etag,
   };
 }

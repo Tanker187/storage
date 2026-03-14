@@ -54,6 +54,7 @@ describe('client', () => {
                 pathname: 'foo.txt',
                 contentType: 'text/plain',
                 contentDisposition: 'attachment; filename="foo.txt"',
+                etag: '"abc123"',
               }),
           }),
       );
@@ -68,6 +69,7 @@ describe('client', () => {
         "contentDisposition": "attachment; filename="foo.txt"",
         "contentType": "text/plain",
         "downloadUrl": "https://storeId.public.blob.vercel-storage.com/superfoo.txt?download=1",
+        "etag": ""abc123"",
         "pathname": "foo.txt",
         "url": "https://storeId.public.blob.vercel-storage.com/superfoo.txt",
       }
@@ -92,7 +94,70 @@ describe('client', () => {
             authorization: 'Bearer vercel_blob_client_fake_123',
             'x-api-blob-request-attempt': '0',
             'x-api-blob-request-id': `fake:${Date.now()}:${requestId}`,
-            'x-api-version': '11',
+            'x-api-version': '12',
+            'x-vercel-blob-access': 'public',
+          },
+          method: 'PUT',
+        },
+      );
+    });
+
+    it('should upload a file with private access', async () => {
+      const fetchMock = jest.spyOn(undici, 'fetch').mockImplementation(
+        jest
+          .fn()
+          .mockResolvedValueOnce({
+            status: 200,
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                type: 'blob.generate-client-token',
+                clientToken: 'vercel_blob_client_fake_123',
+              }),
+          })
+          .mockResolvedValueOnce({
+            status: 200,
+            ok: true,
+            json: () =>
+              Promise.resolve({
+                url: `https://storeId.public.blob.vercel-storage.com/superfoo.txt`,
+                downloadUrl: `https://storeId.public.blob.vercel-storage.com/superfoo.txt?download=1`,
+                pathname: 'foo.txt',
+                contentType: 'text/plain',
+                contentDisposition: 'attachment; filename="foo.txt"',
+                etag: '"abc123"',
+              }),
+          }),
+      );
+
+      await expect(
+        upload('foo.txt', 'Test file data', {
+          access: 'private',
+          handleUploadUrl: '/api/upload',
+        }),
+      ).resolves.toMatchInlineSnapshot(`
+      {
+        "contentDisposition": "attachment; filename="foo.txt"",
+        "contentType": "text/plain",
+        "downloadUrl": "https://storeId.public.blob.vercel-storage.com/superfoo.txt?download=1",
+        "etag": ""abc123"",
+        "pathname": "foo.txt",
+        "url": "https://storeId.public.blob.vercel-storage.com/superfoo.txt",
+      }
+    `);
+
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+      expect(fetchMock).toHaveBeenNthCalledWith(
+        2,
+        'https://vercel.com/api/blob/?pathname=foo.txt',
+        {
+          body: 'Test file data',
+          headers: {
+            authorization: 'Bearer vercel_blob_client_fake_123',
+            'x-api-blob-request-attempt': '0',
+            'x-api-blob-request-id': `fake:${Date.now()}:${requestId}`,
+            'x-api-version': '12',
+            'x-vercel-blob-access': 'private',
           },
           method: 'PUT',
         },
@@ -203,12 +268,14 @@ describe('client', () => {
         1,
         'https://vercel.com/api/blob/mpu?pathname=foo.txt',
         {
+          duplex: undefined,
           headers: {
             authorization: 'Bearer vercel_blob_client_fake_token_for_test',
             'x-api-blob-request-attempt': '0',
             'x-api-blob-request-id': `fake:${Date.now()}:${requestId}`,
-            'x-api-version': '11',
+            'x-api-version': '12',
             'x-mpu-action': 'create',
+            'x-vercel-blob-access': 'public',
           },
           method: 'POST',
           signal: undefined,
@@ -220,15 +287,17 @@ describe('client', () => {
         'https://vercel.com/api/blob/mpu?pathname=foo.txt',
         {
           body: 'data1',
+          duplex: undefined,
           headers: {
             authorization: 'Bearer vercel_blob_client_fake_token_for_test',
             'x-api-blob-request-attempt': '0',
             'x-api-blob-request-id': `fake:${Date.now()}:${requestId}`,
-            'x-api-version': '11',
+            'x-api-version': '12',
             'x-mpu-action': 'upload',
             'x-mpu-key': 'key',
             'x-mpu-upload-id': 'uploadId',
             'x-mpu-part-number': '1',
+            'x-vercel-blob-access': 'public',
           },
           method: 'POST',
           signal: internalAbortSignal,
@@ -239,15 +308,17 @@ describe('client', () => {
         'https://vercel.com/api/blob/mpu?pathname=foo.txt',
         {
           body: 'data2',
+          duplex: undefined,
           headers: {
             authorization: 'Bearer vercel_blob_client_fake_token_for_test',
             'x-api-blob-request-attempt': '0',
             'x-api-blob-request-id': `fake:${Date.now()}:${requestId}`,
-            'x-api-version': '11',
+            'x-api-version': '12',
             'x-mpu-action': 'upload',
             'x-mpu-key': 'key',
             'x-mpu-upload-id': 'uploadId',
             'x-mpu-part-number': '2',
+            'x-vercel-blob-access': 'public',
           },
           method: 'POST',
           signal: internalAbortSignal,
@@ -261,15 +332,17 @@ describe('client', () => {
             { etag: 'etag1', partNumber: 1 },
             { etag: 'etag2', partNumber: 2 },
           ]),
+          duplex: undefined,
           headers: {
             'content-type': 'application/json',
             authorization: 'Bearer vercel_blob_client_fake_token_for_test',
             'x-api-blob-request-attempt': '0',
             'x-api-blob-request-id': `fake:${Date.now()}:${requestId}`,
-            'x-api-version': '11',
+            'x-api-version': '12',
             'x-mpu-action': 'complete',
             'x-mpu-key': 'key',
             'x-mpu-upload-id': 'uploadId',
+            'x-vercel-blob-access': 'public',
           },
           method: 'POST',
           signal: undefined,
@@ -345,12 +418,14 @@ describe('client', () => {
         1,
         'https://vercel.com/api/blob/mpu?pathname=foo.txt',
         {
+          duplex: undefined,
           headers: {
             authorization: 'Bearer vercel_blob_client_fake_token_for_test',
             'x-api-blob-request-attempt': '0',
             'x-api-blob-request-id': `fake:${Date.now()}:${requestId}`,
-            'x-api-version': '11',
+            'x-api-version': '12',
             'x-mpu-action': 'create',
+            'x-vercel-blob-access': 'public',
           },
           method: 'POST',
           signal: undefined,
@@ -362,15 +437,17 @@ describe('client', () => {
         'https://vercel.com/api/blob/mpu?pathname=foo.txt',
         {
           body: 'data1',
+          duplex: undefined,
           headers: {
             authorization: 'Bearer vercel_blob_client_fake_token_for_test',
             'x-api-blob-request-attempt': '0',
             'x-api-blob-request-id': `fake:${Date.now()}:${requestId}`,
-            'x-api-version': '11',
+            'x-api-version': '12',
             'x-mpu-action': 'upload',
             'x-mpu-key': 'key',
             'x-mpu-upload-id': 'uploadId',
             'x-mpu-part-number': '1',
+            'x-vercel-blob-access': 'public',
           },
           method: 'POST',
           signal: internalAbortSignal,
@@ -381,15 +458,17 @@ describe('client', () => {
         'https://vercel.com/api/blob/mpu?pathname=foo.txt',
         {
           body: 'data2',
+          duplex: undefined,
           headers: {
             authorization: 'Bearer vercel_blob_client_fake_token_for_test',
             'x-api-blob-request-attempt': '0',
             'x-api-blob-request-id': `fake:${Date.now()}:${requestId}`,
-            'x-api-version': '11',
+            'x-api-version': '12',
             'x-mpu-action': 'upload',
             'x-mpu-key': 'key',
             'x-mpu-upload-id': 'uploadId',
             'x-mpu-part-number': '2',
+            'x-vercel-blob-access': 'public',
           },
           method: 'POST',
           signal: internalAbortSignal,
@@ -403,15 +482,17 @@ describe('client', () => {
             { etag: 'etag1', partNumber: 1 },
             { etag: 'etag2', partNumber: 2 },
           ]),
+          duplex: undefined,
           headers: {
             'content-type': 'application/json',
             authorization: 'Bearer vercel_blob_client_fake_token_for_test',
             'x-api-blob-request-attempt': '0',
             'x-api-blob-request-id': `fake:${Date.now()}:${requestId}`,
-            'x-api-version': '11',
+            'x-api-version': '12',
             'x-mpu-action': 'complete',
             'x-mpu-key': 'key',
             'x-mpu-upload-id': 'uploadId',
+            'x-vercel-blob-access': 'public',
           },
           method: 'POST',
           signal: undefined,
@@ -507,6 +588,23 @@ describe('client', () => {
       await expect(operation).rejects.toThrow(
         new Error(
           "Vercel Blob: Body must be a string, buffer or stream. You sent a plain JavaScript object, double check what you're trying to upload.",
+        ),
+      );
+    });
+  });
+
+  describe('rejects server-side options on upload()', () => {
+    it('should reject ifMatch option', async () => {
+      await expect(
+        upload('foo.txt', 'Test file data', {
+          access: 'public',
+          handleUploadUrl: '/api/upload',
+          // @ts-expect-error: Runtime check for DX
+          ifMatch: 'some-etag',
+        }),
+      ).rejects.toThrow(
+        new Error(
+          "Vercel Blob: client/`upload` doesn't allow `addRandomSuffix`, `cacheControlMaxAge`, `allowOverwrite` or `ifMatch`. Configure these options at the server side when generating client tokens.",
         ),
       );
     });
